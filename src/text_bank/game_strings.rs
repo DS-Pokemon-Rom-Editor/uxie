@@ -6,6 +6,9 @@ use std::path::Path;
 use crate::GameFamily;
 use crate::game::GameLanguage;
 
+/// Archive indices for game string tables in the message NARC.
+///
+/// Encryption keys do not identify archive categories.
 #[derive(Debug, Clone, Copy)]
 pub struct TextBankIds {
     pub species: u16,
@@ -13,33 +16,119 @@ pub struct TextBankIds {
     pub moves: u16,
     pub abilities: u16,
     pub types: u16,
+    pub locations: u16,
+    pub trainers: u16,
+    pub trainer_classes: u16,
+    pub sounds: u16,
 }
 
 impl TextBankIds {
+    /// Return archive indices for `family` and `language`.
+    ///
+    /// These indices are the same in both games of each pair and in the
+    /// checked revisions. English USA and Europe use the same indices.
+    /// See `docs/text_archives.md` for the checked ROM identities.
+    #[allow(clippy::too_many_lines)] // One named record for each regional layout.
     pub fn for_game(family: GameFamily, language: GameLanguage) -> Self {
-        let is_jp = language.is_japanese();
-
-        match family {
-            GameFamily::Platinum => Self {
+        match (family, language) {
+            (GameFamily::DP, GameLanguage::Japanese) => Self {
+                species: 356,
+                items: 341,
+                moves: 575,
+                abilities: 544,
+                types: 555,
+                locations: 374,
+                trainers: 550,
+                trainer_classes: 551,
+                sounds: 482,
+            },
+            (GameFamily::DP, GameLanguage::Korean) => Self {
+                species: 357,
+                items: 342,
+                moves: 577,
+                abilities: 546,
+                types: 557,
+                locations: 376,
+                trainers: 552,
+                trainer_classes: 553,
+                sounds: 484,
+            },
+            (GameFamily::DP, _) => Self {
+                species: 362,
+                items: 344,
+                moves: 588,
+                abilities: 552,
+                types: 565,
+                locations: 382,
+                trainers: 559,
+                trainer_classes: 560,
+                sounds: 490,
+            },
+            (GameFamily::Platinum, GameLanguage::Japanese) => Self {
+                species: 408,
+                items: 390,
+                moves: 636,
+                abilities: 604,
+                types: 616,
+                locations: 427,
+                trainers: 611,
+                trainer_classes: 612,
+                sounds: 539,
+            },
+            (GameFamily::Platinum, GameLanguage::Korean) => Self {
+                species: 408,
+                items: 390,
+                moves: 637,
+                abilities: 605,
+                types: 617,
+                locations: 428,
+                trainers: 612,
+                trainer_classes: 613,
+                sounds: 540,
+            },
+            (GameFamily::Platinum, _) => Self {
                 species: 412,
                 items: 392,
                 moves: 647,
                 abilities: 610,
                 types: 624,
+                locations: 433,
+                trainers: 618,
+                trainer_classes: 619,
+                sounds: 545,
             },
-            GameFamily::DP => Self {
-                species: 362,
-                items: if is_jp { 341 } else { 344 },
-                moves: 588,
-                abilities: 552,
-                types: 565,
+            (GameFamily::HGSS, GameLanguage::Japanese) => Self {
+                species: 232,
+                items: 219,
+                moves: 739,
+                abilities: 711,
+                types: 724,
+                locations: 272,
+                trainers: 719,
+                trainer_classes: 720,
+                sounds: 430,
             },
-            GameFamily::HGSS => Self {
-                species: if is_jp { 232 } else { 237 },
-                items: if is_jp { 219 } else { 222 },
-                moves: if is_jp { 739 } else { 750 },
+            (GameFamily::HGSS, GameLanguage::Korean) => Self {
+                species: 233,
+                items: 220,
+                moves: 743,
+                abilities: 715,
+                types: 728,
+                locations: 274,
+                trainers: 723,
+                trainer_classes: 724,
+                sounds: 432,
+            },
+            (GameFamily::HGSS, _) => Self {
+                species: 237,
+                items: 222,
+                moves: 750,
                 abilities: 720,
                 types: 735,
+                locations: 279,
+                trainers: 729,
+                trainer_classes: 730,
+                sounds: 437,
             },
         }
     }
@@ -501,43 +590,26 @@ mod tests {
 
         #[test]
         fn prop_text_bank_ids_family_language_rules(lang in language_strategy()) {
-            let dp = TextBankIds::for_game(GameFamily::DP, lang);
-            let dp_jp = TextBankIds::for_game(GameFamily::DP, GameLanguage::Japanese);
-            let dp_en = TextBankIds::for_game(GameFamily::DP, GameLanguage::English);
-
-            prop_assert_eq!(dp.species, 362);
-            prop_assert_eq!(dp.moves, 588);
-            prop_assert_eq!(dp.abilities, 552);
-            prop_assert_eq!(dp.types, 565);
-            if lang.is_japanese() {
-                prop_assert_eq!(dp.items, dp_jp.items);
-            } else {
-                prop_assert_eq!(dp.items, dp_en.items);
+            for family in [GameFamily::DP, GameFamily::Platinum, GameFamily::HGSS] {
+                let ids = TextBankIds::for_game(family, lang);
+                // Archive indices checked against the regional retail ROMs.
+                let expected = match (family, lang) {
+                    (GameFamily::DP, GameLanguage::Japanese) => [356, 341, 575, 544, 555, 374, 550, 551, 482],
+                    (GameFamily::DP, GameLanguage::Korean) => [357, 342, 577, 546, 557, 376, 552, 553, 484],
+                    (GameFamily::DP, _) => [362, 344, 588, 552, 565, 382, 559, 560, 490],
+                    (GameFamily::Platinum, GameLanguage::Japanese) => [408, 390, 636, 604, 616, 427, 611, 612, 539],
+                    (GameFamily::Platinum, GameLanguage::Korean) => [408, 390, 637, 605, 617, 428, 612, 613, 540],
+                    (GameFamily::Platinum, _) => [412, 392, 647, 610, 624, 433, 618, 619, 545],
+                    (GameFamily::HGSS, GameLanguage::Japanese) => [232, 219, 739, 711, 724, 272, 719, 720, 430],
+                    (GameFamily::HGSS, GameLanguage::Korean) => [233, 220, 743, 715, 728, 274, 723, 724, 432],
+                    (GameFamily::HGSS, _) => [237, 222, 750, 720, 735, 279, 729, 730, 437],
+                };
+                prop_assert_eq!(
+                    [ids.species, ids.items, ids.moves, ids.abilities, ids.types,
+                     ids.locations, ids.trainers, ids.trainer_classes, ids.sounds],
+                    expected
+                );
             }
-
-            let pt = TextBankIds::for_game(GameFamily::Platinum, lang);
-            let pt_en = TextBankIds::for_game(GameFamily::Platinum, GameLanguage::English);
-            prop_assert_eq!(pt.species, pt_en.species);
-            prop_assert_eq!(pt.items, pt_en.items);
-            prop_assert_eq!(pt.moves, pt_en.moves);
-            prop_assert_eq!(pt.abilities, pt_en.abilities);
-            prop_assert_eq!(pt.types, pt_en.types);
-
-            let hgss = TextBankIds::for_game(GameFamily::HGSS, lang);
-            let hgss_jp = TextBankIds::for_game(GameFamily::HGSS, GameLanguage::Japanese);
-            let hgss_en = TextBankIds::for_game(GameFamily::HGSS, GameLanguage::English);
-
-            if lang.is_japanese() {
-                prop_assert_eq!(hgss.species, hgss_jp.species);
-                prop_assert_eq!(hgss.items, hgss_jp.items);
-                prop_assert_eq!(hgss.moves, hgss_jp.moves);
-            } else {
-                prop_assert_eq!(hgss.species, hgss_en.species);
-                prop_assert_eq!(hgss.items, hgss_en.items);
-                prop_assert_eq!(hgss.moves, hgss_en.moves);
-            }
-            prop_assert_eq!(hgss.abilities, hgss_en.abilities);
-            prop_assert_eq!(hgss.types, hgss_en.types);
         }
 
         #[test]
